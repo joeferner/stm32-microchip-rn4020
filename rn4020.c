@@ -28,13 +28,13 @@ HAL_StatusTypeDef RN4020_setup(RN4020* rn4020) {
   sleep_ms(100);
   HAL_GPIO_WritePin(rn4020->wakehwPort, rn4020->wakehwPin, GPIO_PIN_RESET);
   sleep_ms(500);
-  
+
   _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_CMD);
   HAL_GPIO_WritePin(rn4020->wakehwPort, rn4020->wakehwPin, GPIO_PIN_SET);
   sleep_ms(100);
   HAL_GPIO_WritePin(rn4020->wakeswPort, rn4020->wakeswPin, GPIO_PIN_SET);
   returnNonOKHALStatus(_RN4020_waitForReadyState(rn4020));
-  
+
   return HAL_OK;
 }
 
@@ -88,7 +88,7 @@ HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020) {
 
 void _RN4020_processLine(RN4020* rn4020, const char* line) {
   RN4020_DEBUG_OUT("rx: %s\n", line);
-  
+
   if (strcmp(line, "Connected") == 0) {
     _RN4020_setConnected(rn4020, true);
     return;
@@ -99,30 +99,30 @@ void _RN4020_processLine(RN4020* rn4020, const char* line) {
     return;
   }
 
-  switch(rn4020->state) {
-    case RN4020_STATE_INITIALIZING:
-      break;
-      
-    case RN4020_STATE_WAITING_FOR_CMD:
-      if (strcmp(line, "CMD") == 0) {
-	_RN4020_setState(rn4020, RN4020_STATE_READY);
-	return;
-      }
-      break;
-    case RN4020_STATE_WAITING_FOR_AOK:
-      if (strcmp(line, "AOK") == 0) {
-	_RN4020_setState(rn4020, RN4020_STATE_READY);
-	return;
-      }
-      break;
-    case RN4020_STATE_WAITING_FOR_RESET:
-      if (strcmp(line, "Reboot") == 0) {
-	_RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_CMD);
-	return;
-      }
-      break;
-    case RN4020_STATE_READY:
-      break;
+  switch (rn4020->state) {
+  case RN4020_STATE_INITIALIZING:
+    break;
+
+  case RN4020_STATE_WAITING_FOR_CMD:
+    if (strcmp(line, "CMD") == 0) {
+      _RN4020_setState(rn4020, RN4020_STATE_READY);
+      return;
+    }
+    break;
+  case RN4020_STATE_WAITING_FOR_AOK:
+    if (strcmp(line, "AOK") == 0) {
+      _RN4020_setState(rn4020, RN4020_STATE_READY);
+      return;
+    }
+    break;
+  case RN4020_STATE_WAITING_FOR_RESET:
+    if (strcmp(line, "Reboot") == 0) {
+      _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_CMD);
+      return;
+    }
+    break;
+  case RN4020_STATE_READY:
+    break;
   }
   RN4020_DEBUG_OUT("unexpected line: %s\n", line);
 }
@@ -161,22 +161,22 @@ HAL_StatusTypeDef _RN4020_waitForReadyState(RN4020* rn4020) {
 
 void _RN4020_setState(RN4020* rn4020, RN4020_State newState) {
 #ifdef RN4020_DEBUG
-  switch(newState) {
-    case RN4020_STATE_INITIALIZING:
-      RN4020_DEBUG_OUT("state: INITIALIZING\n");
-      break;
-    case RN4020_STATE_READY:
-      RN4020_DEBUG_OUT("state: READY\n");
-      break;
-    case RN4020_STATE_WAITING_FOR_CMD:
-      RN4020_DEBUG_OUT("state: WAITING_FOR_CMD\n");
-      break;
-    case RN4020_STATE_WAITING_FOR_AOK:
-      RN4020_DEBUG_OUT("state: WAITING_FOR_AOK\n");
-      break;
-    case RN4020_STATE_WAITING_FOR_RESET:
-      RN4020_DEBUG_OUT("state: WAITING_FOR_RESET\n");
-      break;
+  switch (newState) {
+  case RN4020_STATE_INITIALIZING:
+    RN4020_DEBUG_OUT("state: INITIALIZING\n");
+    break;
+  case RN4020_STATE_READY:
+    RN4020_DEBUG_OUT("state: READY\n");
+    break;
+  case RN4020_STATE_WAITING_FOR_CMD:
+    RN4020_DEBUG_OUT("state: WAITING_FOR_CMD\n");
+    break;
+  case RN4020_STATE_WAITING_FOR_AOK:
+    RN4020_DEBUG_OUT("state: WAITING_FOR_AOK\n");
+    break;
+  case RN4020_STATE_WAITING_FOR_RESET:
+    RN4020_DEBUG_OUT("state: WAITING_FOR_RESET\n");
+    break;
   }
 #endif
   rn4020->state = newState;
@@ -196,7 +196,7 @@ HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_
   _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_AOK);
   sprintf(line, "SUW,%04X,", uuid);
   HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, strlen(line), RN4020_TIMEOUT);
-  for (uint32_t i=0; i<dataLength; i++) {
+  for (uint32_t i = 0; i < dataLength; i++) {
     sprintf(line, "%02X", data[i]);
     HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, 2, RN4020_TIMEOUT);
   }

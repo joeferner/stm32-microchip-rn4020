@@ -67,7 +67,7 @@ typedef struct {
   uint16_t wakeswPin;
   GPIO_TypeDef* wakehwPort;
   uint16_t wakehwPin;
-  
+
   volatile RN4020_State state;
   volatile bool connected;
   RingBufferDmaU8 rxRing;
@@ -89,7 +89,7 @@ HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_
 
 /**
  * level 0x00 (0%) - 0x64 (100%)
- */ 
+ */
 HAL_StatusTypeDef RN4020_battery_setLevel(RN4020* rn4020, uint8_t level);
 
 #endif
