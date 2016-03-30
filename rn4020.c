@@ -86,6 +86,10 @@ HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020) {
   return _RN4020_runAOKCommand(rn4020, "A");
 }
 
+HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020) {
+  return _RN4020_runAOKCommand(rn4020, "U");
+}
+
 void _RN4020_processLine(RN4020* rn4020, const char* line) {
   RN4020_DEBUG_OUT("rx: %s\n", line);
 

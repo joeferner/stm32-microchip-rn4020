@@ -82,6 +82,7 @@ HAL_StatusTypeDef RN4020_reset(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_setDeviceNameWithMAC(RN4020* rn4020, const char* deviceName);
 HAL_StatusTypeDef RN4020_setDeviceName(RN4020* rn4020, const char* deviceName);
 HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020);
+HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020);
 void RN4020_tick(RN4020* rn4020);
 void RN4020_send(RN4020* rn4020, const char* line);
 
