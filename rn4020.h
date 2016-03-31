@@ -9,7 +9,13 @@
 #define RN4020_TIMEOUT 5000
 #endif
 
+#ifndef RN4020_LOOKUP_TABLE_SIZE
+#define RN4020_LOOKUP_TABLE_SIZE 20
+#endif
+
 #define RN4020_RX_BUFFER_SIZE 500
+
+#define RN4020_MAX_UUID_LEN_BYTES (128 / 8)
 
 #define RN4020_SERVICE_DEVICE_INFORMATION    0x80000000
 #define RN4020_SERVICE_BATTERY               0x40000000
@@ -51,15 +57,22 @@
 #define RN4020_FEATURE_MLDP_WITHOUT_STATUS 0x00000400
 
 #define RN4020_BATTERY_LEVEL_UUID  0x2a19
-#define RN4020_BATTERY_MAX_LEVEL 0x64
+#define RN4020_BATTERY_MAX_LEVEL   0x64
 
 typedef enum {
   RN4020_STATE_INITIALIZING,
   RN4020_STATE_READY,
   RN4020_STATE_WAITING_FOR_CMD,
   RN4020_STATE_WAITING_FOR_AOK,
-  RN4020_STATE_WAITING_FOR_RESET
+  RN4020_STATE_WAITING_FOR_RESET,
+  RN4020_STATE_WAITING_FOR_LS
 } RN4020_State;
+
+typedef struct {
+  uint16_t handle;
+  uint8_t characteristicUUID[RN4020_MAX_UUID_LEN_BYTES];
+  uint8_t characteristicUUIDLength;
+} RN4020_handleLookupItem;
 
 typedef struct {
   UART_HandleTypeDef* uart;
@@ -72,7 +85,13 @@ typedef struct {
   volatile bool connected;
   RingBufferDmaU8 rxRing;
   uint8_t rxBuffer[RN4020_RX_BUFFER_SIZE];
+
+  RN4020_handleLookupItem handleLookup[RN4020_LOOKUP_TABLE_SIZE];
+  uint32_t handleLookupLength;
 } RN4020;
+
+__weak void RN4020_onRealTimeRead(RN4020* rn4020, uint16_t characteristicHandle);
+__weak void RN4020_connectedStateChanged(RN4020* rn4020, bool connected);
 
 HAL_StatusTypeDef RN4020_setup(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_resetToFactoryDefaults(RN4020* rn4020);
@@ -83,6 +102,9 @@ HAL_StatusTypeDef RN4020_setDeviceNameWithMAC(RN4020* rn4020, const char* device
 HAL_StatusTypeDef RN4020_setDeviceName(RN4020* rn4020, const char* deviceName);
 HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020);
+HAL_StatusTypeDef RN4020_refreshHandleLookup(RN4020* rn4020);
+RN4020_handleLookupItem* RN4020_lookupHandle(RN4020* rn4020, uint16_t handle);
+bool RN4020_isHandleLookupItemUUIDEqual16(RN4020_handleLookupItem* handleLookupItem, uint16_t uuid);
 void RN4020_tick(RN4020* rn4020);
 void RN4020_send(RN4020* rn4020, const char* line);
 

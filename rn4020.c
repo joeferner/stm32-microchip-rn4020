@@ -4,6 +4,7 @@
 #include <utils/time.h>
 #include <utils/ringbufferdma.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef RN4020_DEBUG
@@ -15,13 +16,15 @@
 void _RN4020_processLine(RN4020* rn4020, const char* line);
 void _RN4020_setState(RN4020* rn4020, RN4020_State newState);
 void _RN4020_setConnected(RN4020* rn4020, bool connected);
-__weak void RN4020_connectedStateChanged(RN4020* rn4020, bool connected);
 HAL_StatusTypeDef _RN4020_waitForReadyState(RN4020* rn4020);
 HAL_StatusTypeDef _RN4020_runAOKCommand(RN4020* rn4020, const char* cmd);
+void _RN4020_parseUUIDString(const char* str, uint8_t strLen, uint8_t* uuid, uint8_t* uuidLen);
+bool _RN4020_parseHandleUUIDLine(const char* line, RN4020_handleLookupItem* handleLookupItem);
 
 HAL_StatusTypeDef RN4020_setup(RN4020* rn4020) {
   RingBufferDmaU8_initUSARTRx(&rn4020->rxRing, rn4020->uart, rn4020->rxBuffer, RN4020_RX_BUFFER_SIZE);
   rn4020->connected = false;
+  rn4020->handleLookupLength = 0;
   _RN4020_setState(rn4020, RN4020_STATE_INITIALIZING);
 
   HAL_GPIO_WritePin(rn4020->wakeswPort, rn4020->wakeswPin, GPIO_PIN_RESET);
@@ -90,6 +93,31 @@ HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020) {
   return _RN4020_runAOKCommand(rn4020, "U");
 }
 
+HAL_StatusTypeDef RN4020_refreshHandleLookup(RN4020* rn4020) {
+  rn4020->handleLookupLength = 0;
+  _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_LS);
+  RN4020_send(rn4020, "LS");
+  return _RN4020_waitForReadyState(rn4020);
+}
+
+RN4020_handleLookupItem* RN4020_lookupHandle(RN4020* rn4020, uint16_t handle) {
+  for (int i = 0; i < rn4020->handleLookupLength; i++) {
+    RN4020_handleLookupItem* item = &rn4020->handleLookup[i];
+    if (item->handle == handle) {
+      return item;
+    }
+  }
+  return NULL;
+}
+
+bool RN4020_isHandleLookupItemUUIDEqual16(RN4020_handleLookupItem* handleLookupItem, uint16_t uuid) {
+  if (handleLookupItem->characteristicUUIDLength != 2) {
+    return false;
+  }
+  uint16_t lookupItemUUID = ((uint16_t)handleLookupItem->characteristicUUID[0] << 8) | handleLookupItem->characteristicUUID[1];
+  return lookupItemUUID == uuid;
+}
+
 void _RN4020_processLine(RN4020* rn4020, const char* line) {
   RN4020_DEBUG_OUT("rx: %s\n", line);
 
@@ -103,6 +131,15 @@ void _RN4020_processLine(RN4020* rn4020, const char* line) {
     return;
   }
 
+  if (strncmp(line, "RV,", 3) == 0) {
+    char handleStr[5];
+    strncpy(handleStr, line + 3, 4);
+    handleStr[4] = '\0';
+    uint16_t handle = strtol(handleStr, NULL, 16);
+    RN4020_onRealTimeRead(rn4020, handle);
+    return;
+  }
+  
   switch (rn4020->state) {
   case RN4020_STATE_INITIALIZING:
     break;
@@ -113,22 +150,55 @@ void _RN4020_processLine(RN4020* rn4020, const char* line) {
       return;
     }
     break;
+    
   case RN4020_STATE_WAITING_FOR_AOK:
     if (strcmp(line, "AOK") == 0) {
       _RN4020_setState(rn4020, RN4020_STATE_READY);
       return;
     }
     break;
+    
   case RN4020_STATE_WAITING_FOR_RESET:
     if (strcmp(line, "Reboot") == 0) {
       _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_CMD);
       return;
     }
     break;
+    
+  case RN4020_STATE_WAITING_FOR_LS:
+    if (_RN4020_parseHandleUUIDLine(line, &rn4020->handleLookup[rn4020->handleLookupLength])) {
+      rn4020->handleLookupLength++;
+      return;
+    } else if (strcmp(line, "END") == 0) {
+      _RN4020_setState(rn4020, RN4020_STATE_READY);
+      return;
+    } else if (strlen(line) == 4) {
+      // service uuid
+      return;
+    }
+    break;
+    
   case RN4020_STATE_READY:
     break;
   }
   RN4020_DEBUG_OUT("unexpected line: %s\n", line);
+}
+
+bool _RN4020_parseHandleUUIDLine(const char* line, RN4020_handleLookupItem* handleLookupItem) {
+  if (strncmp(line, "  ", 2) != 0) {
+    return false;
+  }
+  
+  const char* startOfUUIDPtr = line + 2;
+  const char* firstCommaPtr = strchr(startOfUUIDPtr, ',');
+  _RN4020_parseUUIDString(startOfUUIDPtr, firstCommaPtr - startOfUUIDPtr, handleLookupItem->characteristicUUID, &handleLookupItem->characteristicUUIDLength);
+  
+  char handleStr[5];
+  strncpy(handleStr, firstCommaPtr + 1, 4);
+  handleStr[4] = 0;
+  handleLookupItem->handle = strtol(handleStr, NULL, 16);
+  
+  return true;
 }
 
 void _RN4020_setConnected(RN4020* rn4020, bool connected) {
@@ -138,6 +208,10 @@ void _RN4020_setConnected(RN4020* rn4020, bool connected) {
 
 __weak void RN4020_connectedStateChanged(RN4020* rn4020, bool connected) {
   RN4020_DEBUG_OUT("%s\n", connected ? "connected" : "disconnected");
+}
+
+__weak void RN4020_onRealTimeRead(RN4020* rn4020, uint16_t characteristicHandle) {
+  RN4020_DEBUG_OUT("real time read: 0x%04X\n", characteristicHandle);
 }
 
 HAL_StatusTypeDef _RN4020_runAOKCommand(RN4020* rn4020, const char* cmd) {
@@ -181,9 +255,24 @@ void _RN4020_setState(RN4020* rn4020, RN4020_State newState) {
   case RN4020_STATE_WAITING_FOR_RESET:
     RN4020_DEBUG_OUT("state: WAITING_FOR_RESET\n");
     break;
+  case RN4020_STATE_WAITING_FOR_LS:
+    RN4020_DEBUG_OUT("state: WAITING_FOR_LS\n");
+    break;
   }
 #endif
   rn4020->state = newState;
+}
+
+void _RN4020_parseUUIDString(const char* str, uint8_t strLen, uint8_t* uuid, uint8_t* uuidLen) {
+  char temp[3];
+  uint8_t strIndex, destIndex;
+  for (strIndex = 0, destIndex = 0; strIndex < strLen; strIndex += 2) {
+    temp[0] = str[strIndex];
+    temp[1] = str[strIndex + 1];
+    temp[2] = '\0';
+    uuid[destIndex++] = strtol(temp, NULL, 16);
+  }
+  *uuidLen = destIndex;
 }
 
 void RN4020_send(RN4020* rn4020, const char* line) {
@@ -211,3 +300,4 @@ HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_
 HAL_StatusTypeDef RN4020_battery_setLevel(RN4020* rn4020, uint8_t level) {
   return RN4020_writeServerPublicCharacteristic(rn4020, RN4020_BATTERY_LEVEL_UUID, &level, 1);
 }
+
