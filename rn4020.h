@@ -15,7 +15,10 @@
 
 #define RN4020_RX_BUFFER_SIZE 500
 
-#define RN4020_MAX_UUID_LEN_BYTES (128 / 8)
+#define RN4020_PRIVATE_UUID_LENGTH_BITS       128
+#define RN4020_PRIVATE_UUID_LENGTH_BYTES      (128 / 8)
+#define RN4020_PRIVATE_UUID_HEX_STRING_LENGTH (RN4020_PRIVATE_UUID_LENGTH_BYTES * 2)
+#define RN4020_MAX_UUID_LEN_BYTES             (128 / 8)
 
 #define RN4020_SERVICE_DEVICE_INFORMATION    0x80000000
 #define RN4020_SERVICE_BATTERY               0x40000000
@@ -55,6 +58,21 @@
 #define RN4020_FEATURE_ENABLE_UART_SCRIPT  0x00001000
 #define RN4020_FEATURE_AUTO_MLDP           0x00000800
 #define RN4020_FEATURE_MLDP_WITHOUT_STATUS 0x00000400
+
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_EXTENDED               0b10000000
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_AUTH_WRITE             0b01000000
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_INDICATE               0b00100000
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_NOTIFY                 0b00010000
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_WRITE                  0b00001000
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_WRITE_WITHOUT_RESPONSE 0b00000100
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_READ                   0b00000010
+#define RN4020_PRIVATE_CHARACTERISTIC_PROPERTY_BROADCAST              0b00000001
+
+#define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_NONE     0b00000000
+#define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_ENCR_R   0b00000001
+#define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_AUTH_R   0b00000010
+#define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_ENCR_W   0b00010000
+#define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_AUTH_W   0b00100000
 
 #define RN4020_BATTERY_LEVEL_UUID  0x2a19
 #define RN4020_BATTERY_MAX_LEVEL   0x64
@@ -103,12 +121,24 @@ HAL_StatusTypeDef RN4020_setDeviceName(RN4020* rn4020, const char* deviceName);
 HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_refreshHandleLookup(RN4020* rn4020);
+HAL_StatusTypeDef RN4020_clearPrivate(RN4020* rn4020);
+HAL_StatusTypeDef RN4020_addPrivateService(RN4020* rn4020, const uint8_t* uuid);
+HAL_StatusTypeDef RN4020_addPrivateCharacteristic(
+  RN4020* rn4020,
+  const uint8_t* uuid,
+  uint8_t propertyOptions,
+  uint8_t size,
+  uint8_t securityOptions
+);
+void RN4020_uuidToString(char* dest, const uint8_t* uuid, uint8_t uuidLength);
 RN4020_handleLookupItem* RN4020_lookupHandle(RN4020* rn4020, uint16_t handle);
 bool RN4020_isHandleLookupItemUUIDEqual16(RN4020_handleLookupItem* handleLookupItem, uint16_t uuid);
+bool RN4020_isHandleLookupItemUUIDEqual128(RN4020_handleLookupItem* handleLookupItem, const uint8_t* uuid);
 void RN4020_tick(RN4020* rn4020);
 void RN4020_send(RN4020* rn4020, const char* line);
 
-HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_t uuid, uint8_t* data, uint32_t dataLength);
+HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_t uuid, const uint8_t* data, uint32_t dataLength);
+HAL_StatusTypeDef RN4020_writeServerPrivateCharacteristic(RN4020* rn4020, const uint8_t* uuid, const uint8_t* data, uint32_t dataLength);
 
 /**
  * level 0x00 (0%) - 0x64 (100%)
