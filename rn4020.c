@@ -349,12 +349,39 @@ HAL_StatusTypeDef _RN4020_writeServerCharacteristic(RN4020* rn4020, const uint8_
   char uuidStr[RN4020_PRIVATE_UUID_HEX_STRING_LENGTH + 1];
   char line[20];
   RN4020_uuidToString(uuidStr, uuid, uuidLen);
-  RN4020_DEBUG_OUT("tx: SUW,%s,%02X...\n", uuidStr, data[0]);
+#ifdef RN4020_DEBUG
+  RN4020_DEBUG_OUT("tx: SUW,%s,", uuidStr);
+  for (int i = 0; i < dataLength; i++) {
+    printf("%02X", data[i]);
+  }
+  printf("\n");
+#endif
   _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_AOK);
   sprintf(line, "SUW,");
   HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, strlen(line), RN4020_TIMEOUT);
   HAL_UART_Transmit(rn4020->uart, (uint8_t*)uuidStr, strlen(uuidStr), RN4020_TIMEOUT);
   strcpy(line, ",");
+  HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, strlen(line), RN4020_TIMEOUT);
+  for (uint32_t i = 0; i < dataLength; i++) {
+    sprintf(line, "%02X", data[i]);
+    HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, 2, RN4020_TIMEOUT);
+  }
+  HAL_UART_Transmit(rn4020->uart, (uint8_t*)&newLineCh, 1, RN4020_TIMEOUT);
+  return _RN4020_waitForReadyState(rn4020);
+}
+
+HAL_StatusTypeDef RN4020_writeServerCharacteristicHandle(RN4020* rn4020, uint16_t handle, const uint8_t* data, uint32_t dataLength) {
+  char newLineCh = '\n';
+  char line[20];
+#ifdef RN4020_DEBUG
+  RN4020_DEBUG_OUT("tx: SHW,%04X,", handle);
+  for (int i = 0; i < dataLength; i++) {
+    printf("%02X", data[i]);
+  }
+  printf("\n");
+#endif
+  _RN4020_setState(rn4020, RN4020_STATE_WAITING_FOR_AOK);
+  sprintf(line, "SHW,%04X,", handle);
   HAL_UART_Transmit(rn4020->uart, (uint8_t*)line, strlen(line), RN4020_TIMEOUT);
   for (uint32_t i = 0; i < dataLength; i++) {
     sprintf(line, "%02X", data[i]);

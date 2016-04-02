@@ -74,6 +74,15 @@
 #define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_ENCR_W   0b00010000
 #define RN4020_PRIVATE_CHARACTERISTIC_SECURITY_AUTH_W   0b00100000
 
+#define RN4020_DEV_INFO_MANUFACTURER_NAME  0x2a29
+#define RN4020_DEV_INFO_MODEL_NUMBER       0x2a24
+#define RN4020_DEV_INFO_SERIAL_NUMBER      0x2a25
+#define RN4020_DEV_INFO_HARDWARE_REVISION  0x2a27
+#define RN4020_DEV_INFO_FIRMWARE_REVISION  0x2a26
+#define RN4020_DEV_INFO_SOFTWARE_REVISION  0x2a28
+#define RN4020_DEV_INFO_SYSTEM_ID          0x2a23
+#define RN4020_DEV_INFO_REG_CERT_DATA      0x2a2a
+
 #define RN4020_BATTERY_LEVEL_UUID  0x2a19
 #define RN4020_BATTERY_MAX_LEVEL   0x64
 
@@ -139,6 +148,7 @@ void RN4020_send(RN4020* rn4020, const char* line);
 
 HAL_StatusTypeDef RN4020_writeServerPublicCharacteristic(RN4020* rn4020, uint16_t uuid, const uint8_t* data, uint32_t dataLength);
 HAL_StatusTypeDef RN4020_writeServerPrivateCharacteristic(RN4020* rn4020, const uint8_t* uuid, const uint8_t* data, uint32_t dataLength);
+HAL_StatusTypeDef RN4020_writeServerCharacteristicHandle(RN4020* rn4020, uint16_t handle, const uint8_t* data, uint32_t dataLength);
 
 /**
  * level 0x00 (0%) - 0x64 (100%)
