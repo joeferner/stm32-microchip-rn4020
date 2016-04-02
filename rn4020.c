@@ -13,6 +13,8 @@
 #define RN4020_DEBUG_OUT(format, ...)
 #endif
 
+#define RN4020_MAX_RX_LINE_LENGTH 100
+
 void _RN4020_processLine(RN4020* rn4020, const char* line);
 void _RN4020_setState(RN4020* rn4020, RN4020_State newState);
 void _RN4020_setConnected(RN4020* rn4020, bool connected);
@@ -43,7 +45,7 @@ HAL_StatusTypeDef RN4020_setup(RN4020* rn4020) {
 }
 
 void RN4020_tick(RN4020* rn4020) {
-  char line[100];
+  char line[RN4020_MAX_RX_LINE_LENGTH];
   if (RingBufferDmaU8_readLine(&rn4020->rxRing, line, sizeof(line)) > 0) {
     strTrimRight(line);
     if (strlen(line) > 0) {
@@ -191,6 +193,24 @@ void _RN4020_processLine(RN4020* rn4020, const char* line) {
     return;
   }
 
+  if (strncmp(line, "WV,", 3) == 0) {
+    char handleStr[5];
+    strncpy(handleStr, line + 3, 4);
+    handleStr[4] = '\0';
+    uint16_t handle = strtol(handleStr, NULL, 16);
+    const char* dataStringPtr = line + 8;
+    int dataLength = (strlen(dataStringPtr) - 1) / 2; // WV ends with period so subtract 1
+    uint8_t data[RN4020_MAX_RX_LINE_LENGTH];
+    for (int i = 0; i < dataLength; i++, dataStringPtr += 2) {
+      char temp[3];
+      strncpy(temp, dataStringPtr, 2);
+      temp[2] = '\0';
+      data[i] = strtol(temp, NULL, 16);
+    }
+    RN4020_onWrite(rn4020, handle, data, dataLength);
+    return;
+  }
+
   switch (rn4020->state) {
   case RN4020_STATE_INITIALIZING:
     break;
@@ -263,6 +283,16 @@ __weak void RN4020_connectedStateChanged(RN4020* rn4020, bool connected) {
 
 __weak void RN4020_onRealTimeRead(RN4020* rn4020, uint16_t characteristicHandle) {
   RN4020_DEBUG_OUT("real time read: 0x%04X\n", characteristicHandle);
+}
+
+__weak void RN4020_onWrite(RN4020* rn4020, uint16_t characteristicHandle, uint8_t* data, uint8_t dataLength) {
+#ifdef RN4020_DEBUG
+  RN4020_DEBUG_OUT("write: 0x%04X: ", characteristicHandle);
+  for (int i = 0; i < dataLength; i++) {
+    printf("%02X", data[i]);
+  }
+  printf("\n");
+#endif
 }
 
 HAL_StatusTypeDef _RN4020_runAOKCommand(RN4020* rn4020, const char* cmd) {

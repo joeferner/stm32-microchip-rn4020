@@ -118,6 +118,7 @@ typedef struct {
 } RN4020;
 
 __weak void RN4020_onRealTimeRead(RN4020* rn4020, uint16_t characteristicHandle);
+__weak void RN4020_onWrite(RN4020* rn4020, uint16_t characteristicHandle, uint8_t* data, uint8_t dataLength);
 __weak void RN4020_connectedStateChanged(RN4020* rn4020, bool connected);
 
 HAL_StatusTypeDef RN4020_setup(RN4020* rn4020);
