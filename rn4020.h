@@ -132,6 +132,7 @@ HAL_StatusTypeDef RN4020_advertise(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_removeBond(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_refreshHandleLookup(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_clearPrivate(RN4020* rn4020);
+bool RN4020_isConnected(RN4020* rn4020);
 HAL_StatusTypeDef RN4020_addPrivateService(RN4020* rn4020, const uint8_t* uuid);
 HAL_StatusTypeDef RN4020_addPrivateCharacteristic(
   RN4020* rn4020,

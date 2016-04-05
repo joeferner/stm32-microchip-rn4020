@@ -54,6 +54,10 @@ void RN4020_tick(RN4020* rn4020) {
   }
 }
 
+bool RN4020_isConnected(RN4020* rn4020) {
+  return rn4020->connected;
+}
+
 HAL_StatusTypeDef RN4020_resetToFactoryDefaults(RN4020* rn4020) {
   return _RN4020_runAOKCommand(rn4020, "SF,1");
 }
